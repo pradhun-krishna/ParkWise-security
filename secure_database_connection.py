@@ -102,6 +102,10 @@ class SecureDatabaseConnection:
         if has_table_reference:
             has_allowed_table = any(table in query_upper for table in self.allowed_tables)
             if not has_allowed_table:
+                # Allow COUNT queries for statistics
+                if 'COUNT(' in query_upper and any(table in query_upper for table in self.allowed_tables):
+                    self.logger.info(f"Allowing COUNT query for statistics: {query}")
+                    return True
                 self.logger.warning(f"No allowed tables in query: {query}")
                 return False
         

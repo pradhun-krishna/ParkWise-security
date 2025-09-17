@@ -1,350 +1,169 @@
-# ANPR Automated Parking System
+# ParkWise Security - ANPR Systems
 
-A comprehensive Automated Number Plate Recognition (ANPR) system for automated parking management with boom barrier control, payment integration, and AWS database connectivity.
+A comprehensive collection of Automated Number Plate Recognition (ANPR) systems for parking management and security.
 
-## 🚀 Features
+## 🚗 ANPR System Types
 
-- **Automatic License Plate Recognition** using OpenCV and Tesseract OCR
-- **Dual Camera Support** for entry and exit monitoring
-- **AWS DynamoDB Integration** for session management
-- **Boom Barrier Control** via GPIO (Raspberry Pi)
-- **UPI Payment Integration** with QR code generation
-- **Permanent Parking Support** for authorized vehicles
-- **Real-time Payment Processing** with timeout handling
-- **Hardware Status Indicators** (LEDs, Buzzer)
-- **Comprehensive Logging** and error handling
+### 1. **Standalone OpenCV ANPR** (`opencv_anpr_system.py`)
+- **Pure OpenCV implementation** - no external dependencies
+- **Local processing** - works offline
+- **Good for basic detection** - suitable for simple use cases
+- **Free** - no API costs
 
-## 🏗️ System Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Entry Camera  │    │   Exit Camera   │    │   Display       │
-│   (ANPR)        │    │   (ANPR)        │    │   (QR Codes)    │
-└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
-          │                      │                      │
-          └──────────────────────┼──────────────────────┘
-                                 │
-                    ┌─────────────┴─────────────┐
-                    │    Main Controller        │
-                    │  (Raspberry Pi/Computer)  │
-                    └─────────────┬─────────────┘
-                                  │
-        ┌─────────────────────────┼─────────────────────────┐
-        │                         │                         │
-┌───────▼───────┐    ┌───────────▼───────────┐    ┌────────▼────────┐
-│  AWS DynamoDB │    │   Boom Barrier        │    │  Payment System │
-│  (Sessions)   │    │   Control (GPIO)      │    │  (UPI QR)       │
-└───────────────┘    └───────────────────────┘    └─────────────────┘
-```
-
-## 📋 Prerequisites
-
-### Hardware Requirements
-- **Raspberry Pi 4** (recommended) or compatible computer
-- **USB Camera(s)** for license plate capture
-- **Boom Barrier** with GPIO control capability
-- **LED Indicators** (Green/Red)
-- **Buzzer** for audio feedback
-- **External Display** for QR codes
-
-### Software Requirements
-- **Python 3.8+**
-- **OpenCV 4.x**
-- **Tesseract OCR**
-- **AWS Account** with DynamoDB access
-- **Raspberry Pi OS** (if using Pi)
-
-## 🛠️ Installation
-
-### 1. Clone the Repository
+**Usage:**
 ```bash
-git clone <repository-url>
-cd ParkWise-security
+python opencv_anpr_system.py
 ```
 
-### 2. Run Automated Setup
+### 2. **Standalone Plate Recognizer API** (`plate_recognizer_api.py`)
+- **High accuracy** - cloud-based OCR
+- **Professional grade** - commercial API
+- **Requires API key** - from Plate Recognizer
+- **Cost per detection** - pay per use
+
+**Usage:**
 ```bash
-python setup_system.py
+# Set API key
+set PLATE_RECOGNIZER_API_KEY=your_key_here
+python plate_recognizer_api.py
 ```
 
-### 3. Manual Setup (if automated setup fails)
+### 3. **Smart Hybrid ANPR** (`smart_hybrid_anpr.py`)
+- **Best of both worlds** - OpenCV + API
+- **Efficient** - only sends to API when plate detected
+- **Cost-effective** - 95% fewer API calls
+- **High accuracy** - uses API for final OCR
 
-#### Install System Dependencies
-
-**On Raspberry Pi/Ubuntu:**
+**Usage:**
 ```bash
-sudo apt update
-sudo apt install -y tesseract-ocr tesseract-ocr-eng python3-opencv python3-pip
+python smart_hybrid_anpr.py
 ```
 
-**On Windows:**
-1. Download Tesseract from: https://github.com/UB-Mannheim/tesseract/wiki
-2. Add to PATH environment variable
+### 4. **Shobha Apartment System** (`shobha_anpr_dashboard.py`)
+- **Shobha-specific** - integrated with apartment database
+- **Web dashboard** - real-time monitoring
+- **Boom barrier control** - automatic gate opening
+- **Session management** - tracks entry/exit
 
-**On macOS:**
+**Usage:**
 ```bash
-brew install tesseract
+python start_shobha_system.py
 ```
 
-#### Install Python Packages
+### 5. **Smart Shobha System** (`shobha_smart_dashboard.py`)
+- **Smart hybrid** - OpenCV + API for Shobha
+- **Efficient API usage** - only when needed
+- **High accuracy** - best detection results
+- **Cost-effective** - minimal API calls
+
+**Usage:**
+```bash
+python start_smart_system.py
+```
+
+## 🏗️ Project Structure
+
+```
+ParkWise-security-1/
+├── opencv_anpr_system.py          # Standalone OpenCV ANPR
+├── plate_recognizer_api.py         # Standalone Plate Recognizer API
+├── smart_hybrid_anpr.py           # Smart Hybrid ANPR
+├── shobha_anpr_dashboard.py       # Shobha OpenCV System
+├── shobha_smart_dashboard.py      # Shobha Smart System
+├── secure_database_connection.py  # Database connection
+├── start_shobha_system.py         # Start Shobha system
+├── start_smart_system.py          # Start Smart system
+├── requirements.txt               # Dependencies
+├── config.env.example            # Configuration template
+├── templates/                     # Web dashboard templates
+│   ├── dashboard.html
+│   └── shodha_dashboard.html
+└── logs/                         # System logs
+```
+
+## 🚀 Quick Start
+
+### 1. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment
+### 2. Configure Environment
 ```bash
-cp config.env.example .env
-# Edit .env with your actual configuration
+# Copy and edit configuration
+copy config.env.example .env
+
+# Set your API key (optional)
+set PLATE_RECOGNIZER_API_KEY=your_key_here
 ```
 
-### 5. Setup AWS Tables
+### 3. Choose Your System
+
+#### For Basic Detection (Free):
 ```bash
-python aws_setup.py
+python opencv_anpr_system.py
 ```
 
-## ⚙️ Configuration
-
-### Environment Variables (.env)
-```env
-# AWS Configuration
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-
-# Parking Configuration
-PARKING_LOT_ID=1
-HOURLY_RATE=50.0
-MINIMUM_CHARGE=20.0
-
-# Camera Configuration
-CAMERA_INDEX=0
-EXIT_CAMERA_INDEX=1
-
-# GPIO Pin Configuration (Raspberry Pi)
-BOOM_BARRIER_PIN=18
-LED_GREEN_PIN=20
-LED_RED_PIN=21
-BUZZER_PIN=22
-
-# Payment Configuration
-UPI_MERCHANT_ID=parkwise@upi
-PAYMENT_TIMEOUT=300
-```
-
-### Hardware Wiring (Raspberry Pi)
-```
-Boom Barrier Motor → GPIO Pin 18
-Green LED → GPIO Pin 20
-Red LED → GPIO Pin 21
-Buzzer → GPIO Pin 22
-```
-
-## 🚀 Usage
-
-### Start the System
+#### For High Accuracy (API Required):
 ```bash
-python main_parking_system.py
+python plate_recognizer_api.py
 ```
 
-### System Modes
-
-#### 1. Dual Camera System
-- Separate cameras for entry and exit
-- Automatic processing based on camera location
-- Press SPACE to capture in each camera window
-
-#### 2. Single Camera System
-- One camera with mode switching
-- Press 'e' for entry mode, 'x' for exit mode
-- Press SPACE to capture
-
-#### 3. Test Mode
-- Single detection test
-- Useful for debugging and calibration
-
-### Controls
-- **SPACE/Enter**: Capture and process license plate
-- **'e'**: Switch to entry mode (single camera)
-- **'x'**: Switch to exit mode (single camera)
-- **'q'**: Quit system
-
-## 🔧 System Components
-
-### 1. ANPR System (`anpr_system.py`)
-- License plate detection using OpenCV
-- Multiple detection methods for accuracy
-- Integration with Tesseract OCR
-- Permanent parking database checks
-
-### 2. Payment System (`payment_system.py`)
-- UPI QR code generation
-- Payment verification (simulated)
-- Boom barrier control
-- Hardware status indicators
-
-### 3. AWS Integration (`aws_setup.py`)
-- DynamoDB table creation
-- Session management
-- Payment logging
-- Permanent parking management
-
-### 4. Main Controller (`main_parking_system.py`)
-- System orchestration
-- Multi-threading for dual cameras
-- User interface
-- Error handling and recovery
-
-## 📊 Database Schema
-
-### Parking Sessions Table
-```json
-{
-  "session_id": "1_KA01AB1234_1234567890",
-  "vehicle_number": "KA01AB1234",
-  "parking_lot_id": "1",
-  "entry_time": "2024-01-01T10:00:00",
-  "exit_time": "2024-01-01T12:00:00",
-  "status": "completed",
-  "total_charge": 100.0,
-  "duration_hours": 2.0,
-  "payment_status": "paid"
-}
-```
-
-### Permanent Parking Table
-```json
-{
-  "vehicle_number": "KA01AB1234",
-  "owner_name": "John Doe",
-  "parking_lot_id": "1",
-  "valid_from": "2024-01-01",
-  "valid_until": "2024-12-31",
-  "vehicle_type": "car",
-  "contact_number": "+919876543210"
-}
-```
-
-## 🔒 Security Features
-
-- **Environment Variable Protection**: Sensitive data in .env files
-- **Input Validation**: License plate format validation
-- **Error Handling**: Comprehensive error catching and logging
-- **Hardware Safety**: Barrier area clearance checks
-- **Payment Verification**: Transaction validation (when integrated)
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### Camera Not Detected
+#### For Smart Detection (Recommended):
 ```bash
-# Check camera devices
-ls /dev/video*
-# Test camera
-python -c "import cv2; cap = cv2.VideoCapture(0); print('Camera OK' if cap.isOpened() else 'Camera Error')"
+python smart_hybrid_anpr.py
 ```
 
-#### GPIO Permission Denied
+#### For Shobha Apartment:
 ```bash
-# Add user to gpio group
-sudo usermod -a -G gpio $USER
-# Reboot required
-sudo reboot
+python start_shobha_system.py
 ```
 
-#### Tesseract Not Found
+#### For Smart Shobha Apartment:
 ```bash
-# Install tesseract
-sudo apt install tesseract-ocr
-# Check installation
-tesseract --version
+python start_smart_system.py
 ```
 
-#### AWS Connection Issues
-- Verify AWS credentials in .env
-- Check AWS region configuration
-- Ensure DynamoDB permissions
+## 🔧 Configuration
 
-### Debug Mode
-```bash
-# Enable debug logging
-export DEBUG=1
-python main_parking_system.py
-```
+### Environment Variables
+- `PLATE_RECOGNIZER_API_KEY` - Your Plate Recognizer API key
+- `DATABASE_URL` - PostgreSQL database connection
+- `CAMERA_INDEX` - Camera device index (default: 0)
 
-## 📈 Performance Optimization
+### Database Tables (Shobha)
+- `shobha_permanent_parking` - Registered vehicles
+- `shobha_permanent_parking_sessions` - Entry/exit sessions
 
-### Camera Settings
-- Use appropriate resolution (1280x720 recommended)
-- Ensure good lighting conditions
-- Position camera at optimal angle (45-60 degrees)
+## 📊 System Comparison
 
-### Detection Accuracy
-- Clean license plates for better recognition
-- Use high-contrast backgrounds
-- Ensure proper camera focus
+| System | Accuracy | Cost | Speed | Offline | API Required |
+|--------|----------|------|-------|---------|--------------|
+| OpenCV | Medium | Free | Fast | Yes | No |
+| Plate Recognizer | High | Paid | Medium | No | Yes |
+| Smart Hybrid | High | Low | Fast | Yes | Optional |
+| Shobha System | Medium | Free | Fast | Yes | No |
+| Smart Shobha | High | Low | Fast | Yes | Optional |
 
-### System Performance
-- Use SSD storage for better I/O performance
-- Ensure adequate cooling for Raspberry Pi
-- Monitor system resources
+## 🎯 Use Cases
 
-## 🔄 Maintenance
+- **OpenCV**: Basic detection, offline use, cost-sensitive
+- **Plate Recognizer**: High accuracy, commercial use, API budget available
+- **Smart Hybrid**: Best balance, efficient API usage, production ready
+- **Shobha Systems**: Apartment-specific, integrated with database
 
-### Regular Tasks
-- Clean camera lenses
-- Check boom barrier mechanism
-- Verify AWS connectivity
-- Update system packages
+## 📝 Notes
 
-### Log Monitoring
-```bash
-# Check system logs
-tail -f logs/system.log
-```
+- All systems support real-time camera feed
+- Web dashboards available for monitoring
+- Database integration for vehicle management
+- Boom barrier control for automated gates
+- Session tracking for entry/exit management
 
-### Database Cleanup
-```bash
-# Archive old sessions (implement as needed)
-python cleanup_old_sessions.py
-```
+## 🔗 API Keys
 
-## 🤝 Contributing
+Get your free Plate Recognizer API key at: https://app.platerecognizer.com/
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+## 📞 Support
 
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-For support and questions:
-- Create an issue in the repository
-- Check the troubleshooting section
-- Review the documentation
-
-## 🔮 Future Enhancements
-
-- [ ] Mobile app integration
-- [ ] Real-time payment gateway integration
-- [ ] Machine learning for better plate recognition
-- [ ] Multi-language support
-- [ ] Cloud-based monitoring dashboard
-- [ ] SMS notifications
-- [ ] Integration with parking management software
-
----
-
-**⚠️ Important Notes:**
-- This system is designed for educational and development purposes
-- Ensure proper testing before production deployment
-- Follow local regulations for parking management
-- Implement proper security measures for production use
-
-
-
+For issues or questions, check the system logs in the `logs/` directory.

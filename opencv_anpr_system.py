@@ -92,67 +92,99 @@ class OpenCVANPRSystem:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
         # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        gray = clahe.apply(gray)
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
         
         # Apply bilateral filter to reduce noise while preserving edges
-        filtered = cv2.bilateralFilter(gray, 11, 17, 17)
+        filtered = cv2.bilateralFilter(enhanced, 11, 17, 17)
         
         # Apply Gaussian blur
         blurred = cv2.GaussianBlur(filtered, (5, 5), 0)
         
-        return blurred
+        # Apply sharpening
+        kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+        sharpened = cv2.filter2D(blurred, -1, kernel)
+        
+        return sharpened
     
     def detect_edges(self, image):
-        """Advanced edge detection"""
-        # Apply Canny edge detection with adaptive thresholds
-        edges = cv2.Canny(image, 50, 150, apertureSize=3)
+        """Advanced edge detection with multiple methods"""
+        # Method 1: Canny with different thresholds
+        edges1 = cv2.Canny(image, 30, 100)
+        edges2 = cv2.Canny(image, 50, 150)
+        edges3 = cv2.Canny(image, 100, 200)
         
-        # Apply morphological operations to close gaps
+        # Combine different Canny results
+        combined_canny = cv2.bitwise_or(edges1, edges2)
+        combined_canny = cv2.bitwise_or(combined_canny, edges3)
+        
+        # Method 2: Sobel edge detection
+        sobelx = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)
+        sobely = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3)
+        sobel_edges = np.sqrt(sobelx**2 + sobely**2)
+        sobel_edges = np.uint8(sobel_edges / sobel_edges.max() * 255)
+        
+        # Combine all methods
+        final_edges = cv2.bitwise_or(combined_canny, sobel_edges)
+        
+        # Apply morphological operations to connect broken edges
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+        final_edges = cv2.morphologyEx(final_edges, cv2.MORPH_CLOSE, kernel)
         
-        return edges
+        return final_edges
     
     def find_contours(self, edges):
-        """Find and filter contours for license plates"""
-        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        """Find and filter contours for license plates with strict criteria"""
+        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        # Filter contours by area and aspect ratio
         plate_candidates = []
         
         for contour in contours:
             area = cv2.contourArea(contour)
             
-            # Filter by area (more lenient)
-            if self.min_plate_area < area < self.max_plate_area:
-                # Get bounding rectangle
-                x, y, w, h = cv2.boundingRect(contour)
+            # Filter by area (license plates are typically 1000-50000 pixels)
+            if area < 1000 or area > 50000:
+                continue
                 
-                # Calculate aspect ratio
-                aspect_ratio = w / h
+            # Get bounding rectangle
+            x, y, w, h = cv2.boundingRect(contour)
+            aspect_ratio = w / h
+            
+            # License plates typically have aspect ratio between 2.0 and 4.0
+            if not (2.0 <= aspect_ratio <= 4.0):
+                continue
                 
-                # More lenient aspect ratio (1.5 to 6.0)
-                if 1.5 <= aspect_ratio <= 6.0:
-                    # Calculate solidity (area of contour / area of convex hull)
-                    hull = cv2.convexHull(contour)
-                    hull_area = cv2.contourArea(hull)
-                    solidity = area / hull_area if hull_area > 0 else 0
-                    
-                    # More lenient solidity (0.5 instead of 0.7)
-                    if solidity > 0.5:
-                        plate_candidates.append({
-                            'contour': contour,
-                            'area': area,
-                            'aspect_ratio': aspect_ratio,
-                            'solidity': solidity,
-                            'bbox': (x, y, w, h)
-                        })
+            # Check if contour is roughly rectangular
+            hull = cv2.convexHull(contour)
+            hull_area = cv2.contourArea(hull)
+            solidity = area / hull_area if hull_area > 0 else 0
+            
+            # Should be fairly solid (rectangular)
+            if solidity < 0.8:
+                continue
+                
+            # Check extent (how much of the bounding rectangle is filled)
+            extent = area / (w * h)
+            if extent < 0.6:
+                continue
+                
+            # Check if the contour is not too elongated
+            if w < 50 or h < 15:
+                continue
+                
+            plate_candidates.append({
+                'contour': contour,
+                'area': area,
+                'aspect_ratio': aspect_ratio,
+                'solidity': solidity,
+                'extent': extent,
+                'bbox': (x, y, w, h)
+            })
         
         # Sort by area (largest first)
         plate_candidates.sort(key=lambda x: x['area'], reverse=True)
         
-        return plate_candidates[:10]  # Return top 10 candidates
+        return plate_candidates[:5]  # Return top 5 candidates
     
     def extract_plate_region(self, image, bbox):
         """Extract and enhance license plate region"""
@@ -186,10 +218,47 @@ class OpenCVANPRSystem:
         
         return thresh
     
-    def simulate_ocr(self, plate_image):
-        """Simulate OCR for testing (replace with real Tesseract)"""
-        # For now, return None to indicate no real detection
-        # This will be replaced with actual Tesseract OCR
+    def extract_text_ocr(self, plate_image):
+        """Extract text using Tesseract OCR with multiple methods"""
+        try:
+            import pytesseract
+            
+            # Configure Tesseract for better number plate recognition
+            configs = [
+                '--oem 3 --psm 8 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+                '--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+                '--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+                '--oem 3 --psm 13 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            ]
+            
+            texts = []
+            for config in configs:
+                try:
+                    text = pytesseract.image_to_string(plate_image, config=config)
+                    if text and text.strip():
+                        texts.append(text.strip().upper())
+                except:
+                    continue
+            
+            # Clean and validate texts
+            valid_texts = []
+            for text in texts:
+                # Clean text (remove non-alphanumeric characters)
+                cleaned = re.sub(r'[^A-Z0-9]', '', text)
+                
+                # Check if it looks like a license plate
+                if self.validate_indian_plate(cleaned):
+                    valid_texts.append(cleaned)
+            
+            # Return the most common valid text
+            if valid_texts:
+                return max(set(valid_texts), key=valid_texts.count)
+                
+        except ImportError:
+            print("⚠️ Tesseract not available, using simulation")
+        except Exception as e:
+            print(f"⚠️ OCR error: {e}")
+            
         return None
     
     def validate_indian_plate(self, text):
@@ -216,6 +285,33 @@ class OpenCVANPRSystem:
                 return True
         
         return False
+    
+    def calculate_confidence(self, plate_text, candidate):
+        """Calculate confidence score for detected plate"""
+        base_confidence = 0.5
+        
+        # Add confidence for valid format
+        if self.validate_indian_plate(plate_text):
+            base_confidence += 0.3
+            
+        # Add confidence for reasonable length
+        if 8 <= len(plate_text) <= 12:
+            base_confidence += 0.2
+            
+        # Add confidence for character distribution
+        if len(plate_text) >= 8:
+            # Check if it has the right mix of letters and numbers
+            letters = sum(1 for c in plate_text if c.isalpha())
+            numbers = sum(1 for c in plate_text if c.isdigit())
+            
+            if letters >= 4 and numbers >= 4:
+                base_confidence += 0.1
+                
+        # Add confidence based on contour quality
+        base_confidence += candidate['solidity'] * 0.1
+        base_confidence += candidate['extent'] * 0.1
+                
+        return min(1.0, base_confidence)
     
     def detect_license_plates(self, frame):
         """Main license plate detection function"""
@@ -247,17 +343,25 @@ class OpenCVANPRSystem:
             plate_image = self.extract_plate_region(frame, candidate['bbox'])
             
             if plate_image is not None:
-                # For now, just detect ANY rectangular region
-                detected_plates.append({
-                    'text': f"RECT_{i+1}",  # Label as rectangle
-                    'bbox': candidate['bbox'],
-                    'confidence': candidate['solidity'],
-                    'timestamp': datetime.now()
-                })
-                print(f"✅ Detected rectangle {i+1}!")
-                # Set next detection time (3 seconds from now)
-                self.last_detection_time = current_time
-                break  # Only one detection per cycle
+                # Try to extract text using OCR
+                plate_text = self.extract_text_ocr(plate_image)
+                
+                if plate_text:
+                    # Calculate confidence based on multiple factors
+                    confidence = self.calculate_confidence(plate_text, candidate)
+                    
+                    detected_plates.append({
+                        'text': plate_text,
+                        'bbox': candidate['bbox'],
+                        'confidence': confidence,
+                        'timestamp': datetime.now()
+                    })
+                    print(f"✅ Detected plate: {plate_text} (Confidence: {confidence:.2f})")
+                    # Set next detection time (3 seconds from now)
+                    self.last_detection_time = current_time
+                    break  # Only one detection per cycle
+                else:
+                    print(f"❌ No valid text found in candidate {i+1}")
         
         if not detected_plates:
             print("❌ No rectangles detected")

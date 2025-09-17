@@ -1,0 +1,44 @@
+# ANPR Parking System Requirements
+
+# Core dependencies
+opencv-python==4.8.1.78
+numpy==1.24.3
+python-dotenv==1.0.0
+
+# Database integration
+psycopg2-binary==2.9.7
+
+# QR code generation
+qrcode[pil]==7.4.2
+Pillow==10.0.1
+
+# OCR for license plate recognition
+pytesseract==0.3.10
+
+# GPIO control for Raspberry Pi
+RPi.GPIO==0.7.1
+
+# HTTP requests
+requests==2.31.0
+
+# Date and time handling
+python-dateutil==2.8.2
+
+# JSON handling
+jsonschema==4.19.0
+
+# Logging
+loguru==0.7.2
+
+# Web dashboard
+Flask==2.3.3
+Flask-CORS==4.0.0
+
+# Testing
+pytest==7.4.2
+pytest-cov==4.1.0
+
+# Development
+black==23.7.0
+flake8==6.0.0
+mypy==1.5.1
